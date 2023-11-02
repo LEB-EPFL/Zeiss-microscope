@@ -30,5 +30,5 @@ The light source is a CoolLed pE-800 with 8 indipendent LED's with the following
 * 635nm
 * 740nm
 
-The camera is a **Photometrics Prime** with a **pixel size of 6.5µm**
+The camera is a **Photometrics Prime** with a **pixel size of 6.5µm**  
 The microscope is also equipped with a 405nm FRAP laser system from the company Visitron
