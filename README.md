@@ -1,3 +1,5 @@
+# Please see this pages Wiki to find out how to set up the Zeiss
+
 # Zeiss microscope
 This is a wiki page for the labs Zeiss Axio Observer 7 microscope.
 
