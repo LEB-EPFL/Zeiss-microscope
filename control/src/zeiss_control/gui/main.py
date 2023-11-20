@@ -1,0 +1,88 @@
+from qtpy.QtWidgets import (QApplication, QPushButton, QWidget, QGridLayout, QMainWindow)
+from pymmcore_plus import CMMCorePlus
+from pymmcore_widgets import (GroupPresetTableWidget, StageWidget, LiveButton, SnapButton,
+                              ExposureWidget, ChannelGroupWidget, ShuttersWidget)
+from zeiss_control.gui.mda import ZeissMDAWidget
+import os
+
+os.environ['MICROMANAGER_PATH'] = "C:/Program Files/Micro-Manager-2.0"
+class MainWindow(QMainWindow):
+    def __init__(self, mmcore:CMMCorePlus):
+        super().__init__()
+        self.main = QWidget()
+        self.setWindowTitle("Micro-Manager")
+        self.setCentralWidget(self.main)
+
+        self.mda_window = ZeissMDAWidget(mmcore=mmc)
+        self.mda_window.setWindowTitle("MyMDA")
+        
+        self.snap_button = SnapButton(mmcore=mmcore)
+        self.live_button = LiveButton(mmcore=mmcore)
+        self.mda_button = QPushButton("MDA")
+
+        self.exposure = ExposureWidget(mmcore=mmcore)
+        self.channel_group = ChannelGroupWidget(mmcore=mmcore)
+        self.shutter_refl = ShuttersWidget('ZeissReflectedLightShutter', mmcore=mmcore)
+        self.shutter_trans = ShuttersWidget('ZeissTransmittedLightShutter', mmcore=mmcore)
+
+        self.main.setLayout(QGridLayout())
+        self.main.layout().addWidget(self.snap_button, 0, 0)
+        self.main.layout().addWidget(self.live_button, 1, 0,)
+        self.main.layout().addWidget(self.mda_button, 2, 0)
+
+        self.main.layout().addWidget(self.exposure, 0, 2)
+        self.main.layout().addWidget(self.channel_group, 1, 2)
+        self.main.layout().addWidget(self.shutter_refl, 2, 1)
+        self.main.layout().addWidget(self.shutter_trans, 2, 2)
+
+        self.mda_button.pressed.connect(self._mda)
+
+    def _mda(self):
+        self.mda_window.show()
+
+    def closeEvent(self, event):
+        "Close all windows if main window is closed."
+        app = QApplication.instance()
+        app.closeAllWindows()
+        super().closeEvent(event)
+
+
+class Zeiss_StageWidget(QWidget):
+    def __init__(self, mmc):
+        super().__init__()
+        stage1 = StageWidget("ZeissXYStage", mmcore=mmc)
+        stage2 = StageWidget("ZeissFocusAxis", mmcore=mmc)
+        self.setLayout(QGridLayout())
+        self.layout().addWidget(stage1, 2, 0)
+        self.layout().addWidget(stage2, 2, 1)
+
+
+if __name__ == "__main__":
+    # from isim_control.settings import iSIMSettings
+
+    from pymmcore_plus import CMMCorePlus
+    from dark_theme import set_dark
+    app = QApplication([])
+    set_dark(app)
+
+    mmc = CMMCorePlus.instance()
+    mmc.loadSystemConfiguration("C:/Control/Zeiss-microscope/231031_ZeissAxioObserver7.cfg")
+
+    stages = Zeiss_StageWidget(mmc)
+    stages.show()
+
+    from pymmcore_widgets import ImagePreview
+    preview = ImagePreview(mmcore=mmc)
+    preview.show()
+
+    #GUI
+    frame = MainWindow(mmc)
+
+    group_presets = GroupPresetTableWidget(mmcore=mmc)
+    frame.main.layout().addWidget(group_presets, 5, 0, 1, 3)
+    group_presets.show() # needed to keep events alive?
+    frame.show()
+
+    from output import OutputGUI
+    output = OutputGUI(mmc, frame.mda_window)
+    app.exec_()
