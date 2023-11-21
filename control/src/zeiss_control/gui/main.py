@@ -7,15 +7,15 @@ import os
 
 os.environ['MICROMANAGER_PATH'] = "C:/Program Files/Micro-Manager-2.0"
 class MainWindow(QMainWindow):
-    def __init__(self, mmcore:CMMCorePlus):
+    def __init__(self, mmcore:CMMCorePlus, eda:bool=False):
         super().__init__()
         self.main = QWidget()
         self.setWindowTitle("Micro-Manager")
         self.setCentralWidget(self.main)
 
-        self.mda_window = ZeissMDAWidget(mmcore=mmc)
+        self.mda_window = ZeissMDAWidget(mmcore=mmcore)
         self.mda_window.setWindowTitle("MyMDA")
-        
+
         self.snap_button = SnapButton(mmcore=mmcore)
         self.live_button = LiveButton(mmcore=mmcore)
         self.mda_button = QPushButton("MDA")
@@ -36,6 +36,13 @@ class MainWindow(QMainWindow):
         self.main.layout().addWidget(self.shutter_trans, 2, 2)
 
         self.mda_button.pressed.connect(self._mda)
+
+        if eda:
+            self.eda_window = ZeissMDAWidget(mmcore=mmcore)
+            self.eda_window.setWindowTitle("MyEDA")
+            self.eda_button = QPushButton("EDA")
+            self.main.layout().addWidget(self.eda_button, 3, 0)
+            self.eda_button.pressed.connect(self.eda_window.show)
 
     def _mda(self):
         self.mda_window.show()
@@ -61,7 +68,7 @@ if __name__ == "__main__":
     # from isim_control.settings import iSIMSettings
 
     from pymmcore_plus import CMMCorePlus
-    from dark_theme import set_dark
+    from zeiss_control.gui.dark_theme import set_dark
     app = QApplication([])
     set_dark(app)
 
@@ -83,6 +90,10 @@ if __name__ == "__main__":
     group_presets.show() # needed to keep events alive?
     frame.show()
 
-    from output import OutputGUI
+    from zeiss_control.output import OutputGUI
     output = OutputGUI(mmc, frame.mda_window)
     app.exec_()
+
+    if frame.eda:
+        from eda_plugin.utility.core_event_bus import CoreEventBus
+        event_bus = CoreEventBus()

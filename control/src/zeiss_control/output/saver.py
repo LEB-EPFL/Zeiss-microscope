@@ -65,8 +65,11 @@ class CoreOMETiffWriter:
     def _set_sequence(self, seq: useq.MDASequence | None) -> None:
         """Set the current sequence, and update the used axes."""
         self._current_sequence = seq
-        if seq:
-            self._used_axes = tuple(seq.used_axes)
+        try:
+            if seq:
+                self._used_axes = tuple(seq.used_axes)
+        except:
+            self._used_axes = ('T', 'C')
 
 
     def _create_seq_memmap(

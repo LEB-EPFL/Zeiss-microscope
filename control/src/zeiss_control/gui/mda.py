@@ -1,16 +1,19 @@
 from pymmcore_widgets._mda import MDAWidget
 from pymmcore_plus import CMMCorePlus
 from qtpy.QtWidgets import QCheckBox, QLineEdit, QHBoxLayout
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, QEvent
 from pathlib import Path
 import json
 import yaml
 from useq import MDASequence
 import re
+import logging
+
 
 class ZeissMDAWidget(MDAWidget):
     "Adding save information to the MDAWidget"
     new_save_settings = Signal(bool, str)
+    mda_settings_event = Signal(object)
     def __init__(self, mmcore:CMMCorePlus):
         super().__init__(mmcore=mmcore, include_run_button=True)
 
@@ -32,6 +35,9 @@ class ZeissMDAWidget(MDAWidget):
         self.set_state(self.settings)
 
         self._mmc.mda.events.sequenceFinished.connect(self.on_sequence_finished)
+
+        self._tab.installEventFilter(self)
+
 
     def on_sequence_finished(self):
         "Increment the saving file name"
@@ -82,3 +88,13 @@ class ZeissMDAWidget(MDAWidget):
     def closeEvent(self, e):
         self.save_settings()
         return super().closeEvent(e)
+    
+    def send_new_settings(self):
+        self.mda_settings_event.emit(self.get_state())
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Leave:
+            print(event)
+            self.mda_settings_event.emit(self.get_state())
+        return super().eventFilter(obj, event)
+    

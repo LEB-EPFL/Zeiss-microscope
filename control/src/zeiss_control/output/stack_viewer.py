@@ -28,9 +28,7 @@ if TYPE_CHECKING:
     from qtpy.QtWidgets import QWidget
     from useq import MDAEvent, MDASequence
     from vispy.scene.events import SceneMouseEvent
-
-    from pymmcore_widgets._mda._datastore import QLocalDataStore
-
+    from zeiss_control.output.datastore import QLocalDataStore
 
 class StackViewer(QtWidgets.QWidget):
     """A viewer for MDA acquisitions started by MDASequence in pymmcore-plus events."""
@@ -81,13 +79,17 @@ class StackViewer(QtWidgets.QWidget):
         self.clim_timer.setInterval(int(1000 // AUTOCLIM_RATE))
         self.clim_timer.timeout.connect(self.on_clim_timer)
 
-        if sequence:
-            self.on_sequence_start(sequence)
+        try:
+            if sequence:
+                self.on_sequence_start(sequence)
+        except:
+            pass
 
     def construct_canvas(self) -> None:
         img_size = (self._mmc.getImageHeight(), self._mmc.getImageWidth())
+        print("IMAGE SIZE", img_size)
         if img_size == (0, 0):
-            img_size = (512, 512)
+            img_size = (2048, 2048)
         self._canvas = scene.SceneCanvas(
             size=img_size, parent=self, autoswap=False, vsync=True, keys=None
         )
@@ -96,9 +98,9 @@ class StackViewer(QtWidgets.QWidget):
         self.view = self._canvas.central_widget.add_view()
         self.view.camera = scene.PanZoomCamera(aspect=1)
         self.view.camera.flip = (0, 1, 0)
-        self.view.camera.set_range()
+        self.view.camera.set_range((0, img_size[0]), (0, img_size[1]))
 
-    def on_sequence_start(self, sequence: MDASequence) -> None:
+    def on_sequence_start(self, sequence: MDASequence|None) -> None:
         """Sequence started by the mmcore. Adjust our settings, make layers etc."""
         self.ready = False
         self.sequence = sequence
@@ -113,6 +115,7 @@ class StackViewer(QtWidgets.QWidget):
                 self._slider_settings.emit({"index": dim, "show": False, "max": 1})
 
         # Channels
+        print(sequence)
         nc = sequence.sizes["c"]
         self.images = []
         for i in range(nc):
@@ -164,7 +167,7 @@ class StackViewer(QtWidgets.QWidget):
         self.current_channel = channel
 
     def _create_sliders(self, sequence: MDASequence | None = None) -> None:
-        n_channels = 5 if sequence is None else sequence.sizes["c"]
+        n_channels = 5 if sequence is None else sequence.sizes.get("c", 5)
         self.channel_row = ChannelRow(n_channels, self.cmaps)
         self.channel_row.visible.connect(self._handle_channel_visibility)
         self.channel_row.autoscale.connect(self._handle_channel_autoscale)
@@ -174,7 +177,7 @@ class StackViewer(QtWidgets.QWidget):
         self.layout().addWidget(self.channel_row)
 
         if sequence is not None:
-            dims = [x for x in sequence.sizes.keys() if sequence.sizes[x] > 0]
+            dims = [x for x in sequence.sizes.keys() if sequence.sizes.get(x, 0) > 0]
         else:
             dims = DIMENSIONS
         if "c" in dims:
