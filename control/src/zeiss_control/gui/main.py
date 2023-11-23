@@ -1,12 +1,14 @@
-from qtpy.QtWidgets import (QApplication, QPushButton, QWidget, QGridLayout, QMainWindow)
+from qtpy.QtWidgets import (QApplication, QPushButton, QWidget, QGridLayout, QLabel)
 from pymmcore_plus import CMMCorePlus
 from pymmcore_widgets import (GroupPresetTableWidget, StageWidget, LiveButton, SnapButton,
                               ExposureWidget, ChannelGroupWidget, ShuttersWidget)
 from zeiss_control.gui.mda import ZeissMDAWidget
 import os
+from zeiss_control.gui._util.dark_theme import set_eda
+from zeiss_control.gui._util.qt_classes import QMainWindowRestore, QWidgetRestore
 
 os.environ['MICROMANAGER_PATH'] = "C:/Program Files/Micro-Manager-2.0"
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindowRestore):
     def __init__(self, mmcore:CMMCorePlus, eda:bool=False):
         super().__init__()
         self.main = QWidget()
@@ -22,24 +24,33 @@ class MainWindow(QMainWindow):
 
         self.exposure = ExposureWidget(mmcore=mmcore)
         self.channel_group = ChannelGroupWidget(mmcore=mmcore)
-        self.shutter_refl = ShuttersWidget('ZeissReflectedLightShutter', mmcore=mmcore)
-        self.shutter_trans = ShuttersWidget('ZeissTransmittedLightShutter', mmcore=mmcore)
 
         self.main.setLayout(QGridLayout())
-        self.main.layout().addWidget(self.snap_button, 0, 0)
-        self.main.layout().addWidget(self.live_button, 1, 0,)
+        self.main.layout().addWidget(self.live_button, 0, 0)
+        self.main.layout().addWidget(self.snap_button, 1, 0)
         self.main.layout().addWidget(self.mda_button, 2, 0)
 
         self.main.layout().addWidget(self.exposure, 0, 2)
         self.main.layout().addWidget(self.channel_group, 1, 2)
-        self.main.layout().addWidget(self.shutter_refl, 2, 1)
-        self.main.layout().addWidget(self.shutter_trans, 2, 2)
+        try:
+            self.shutter_refl = ShuttersWidget('ZeissReflectedLightShutter', mmcore=mmcore)
+            self.fluo_label = QLabel("Fluorescence")
+            self.shutter_trans = ShuttersWidget('ZeissTransmittedLightShutter', mmcore=mmcore)
+            self.brightfield_label = QLabel("Brightfield")
+            self.main.layout().addWidget(self.shutter_refl, 2, 1)
+            self.main.layout().addWidget(self.fluo_label, 3, 1)
+            self.main.layout().addWidget(self.shutter_trans, 2, 2)
+            self.main.layout().addWidget(self.brightfield_label, 3, 2)
+        except:
+            pass # Not on the Zeiss, omit this
 
         self.mda_button.pressed.connect(self._mda)
 
         if eda:
-            self.eda_window = ZeissMDAWidget(mmcore=mmcore)
+            self.eda_window = ZeissMDAWidget(mmcore=mmcore, include_run_button=False,
+                                             save_filename="eda", saving=False)
             self.eda_window.setWindowTitle("MyEDA")
+            set_eda(self.eda_window)
             self.eda_button = QPushButton("EDA")
             self.main.layout().addWidget(self.eda_button, 3, 0)
             self.eda_button.pressed.connect(self.eda_window.show)
@@ -54,7 +65,7 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
 
-class Zeiss_StageWidget(QWidget):
+class Zeiss_StageWidget(QWidgetRestore):
     def __init__(self, mmc):
         super().__init__()
         stage1 = StageWidget("ZeissXYStage", mmcore=mmc)
@@ -68,7 +79,7 @@ if __name__ == "__main__":
     # from isim_control.settings import iSIMSettings
 
     from pymmcore_plus import CMMCorePlus
-    from zeiss_control.gui.dark_theme import set_dark
+    from zeiss_control.gui._util.dark_theme import set_dark
     app = QApplication([])
     set_dark(app)
 

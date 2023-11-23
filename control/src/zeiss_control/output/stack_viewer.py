@@ -8,9 +8,10 @@ from pymmcore_plus import CMMCorePlus
 from qtpy import QtCore, QtWidgets
 from qtpy.QtCore import Signal, QTimer
 from superqt.cmap._cmap_utils import try_cast_colormap
-
+from useq import Channel
 from zeiss_control.output._util._channel_row import ChannelRow
 from zeiss_control.output._util._labeled_slider import LabeledVisibilitySlider
+from zeiss_control.gui._util.qt_classes import QWidgetRestore
 
 DIMENSIONS = ["t", "z", "c", "p", "g"]
 AUTOCLIM_RATE = 1  # Hz   0 = inf
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
     from vispy.scene.events import SceneMouseEvent
     from zeiss_control.output.datastore import QLocalDataStore
 
-class StackViewer(QtWidgets.QWidget):
+class StackViewer(QWidgetRestore):
     """A viewer for MDA acquisitions started by MDASequence in pymmcore-plus events."""
 
     _slider_settings = Signal(dict)
@@ -41,14 +42,16 @@ class StackViewer(QtWidgets.QWidget):
         datastore: QLocalDataStore,
         sequence: MDASequence | None = None,
         mmcore: CMMCorePlus | None = None,
+        eda: bool | None = False,
         parent: QWidget | None = None,
     ):
         super().__init__(parent=parent)
         self._mmc = mmcore or CMMCorePlus.instance()
         self.sequence = sequence
+        self.eda = eda
 
         self._clim = "auto"
-        self.cmap_names = ["Gray", "cyan", "magenta"]
+        self.cmap_names = ["Gray", "cyan", "yellow", "magenta"]
         self.cmaps = [try_cast_colormap(x) for x in self.cmap_names]
         self.display_index = {dim: 0 for dim in DIMENSIONS}
 
@@ -113,10 +116,15 @@ class StackViewer(QtWidgets.QWidget):
                 )
             else:
                 self._slider_settings.emit({"index": dim, "show": False, "max": 1})
-
+        
         # Channels
-        print(sequence)
-        nc = sequence.sizes["c"]
+        nc = sequence.sizes.get("c", 1)
+        self.channels = list(sequence.channels)
+        if self.eda:
+            #Add the channel for the network image
+            nc += 1
+            self.channels.append(Channel(config="Network"))
+        # print("StackViewer channels", self.channels)
         self.images = []
         for i in range(nc):
             image = scene.visuals.Image(
@@ -129,7 +137,7 @@ class StackViewer(QtWidgets.QWidget):
                 image.set_gl_state("additive", depth_test=False)
             self.images.append(image)
             self.current_channel = i
-            self._new_channel.emit(i, sequence.channels[i].config)
+            self._new_channel.emit(i, self.channels[i].config)
         self.ready = True
 
     def _handle_channel_clim(
@@ -168,6 +176,7 @@ class StackViewer(QtWidgets.QWidget):
 
     def _create_sliders(self, sequence: MDASequence | None = None) -> None:
         n_channels = 5 if sequence is None else sequence.sizes.get("c", 5)
+        n_channels = n_channels + 1 if self.eda else n_channels
         self.channel_row = ChannelRow(n_channels, self.cmaps)
         self.channel_row.visible.connect(self._handle_channel_visibility)
         self.channel_row.autoscale.connect(self._handle_channel_autoscale)
@@ -194,7 +203,11 @@ class StackViewer(QtWidgets.QWidget):
 
     def on_mouse_move(self, event: SceneMouseEvent) -> None:
         """Mouse moved on the canvas, display the pixel value and position."""
-        transform = self.images[self.current_channel].get_transform("canvas", "visual")
+        try:
+            transform = self.images[self.current_channel].get_transform("canvas", "visual")
+        except IndexError:
+            self.info_bar.setText("")
+            return
         p = [int(x) for x in transform.map(event.pos)]
         if p[0] < 0 or p[1] < 0:
             info = f"[{p[0]}, {p[1]}]"
@@ -218,7 +231,7 @@ class StackViewer(QtWidgets.QWidget):
             return
         if (sequence := self.sequence) is None:
             return
-        for c in range(sequence.sizes.get("c", 0)):
+        for c in range(len(self.channels)):
             frame = self.datastore.get_frame(
                 (self.display_index["t"], self.display_index["z"], c)
             )
@@ -240,7 +253,11 @@ class StackViewer(QtWidgets.QWidget):
         if sum(indices.values()) == 0:
             self.view.camera.rect = (0, 0, img.shape[0], img.shape[1])
         # Update display
-        self.display_image(img, indices["c"])
+        for c in range(len(self.channels)):
+            frame = self.datastore.get_frame(
+                (indices["t"], indices["z"], c)
+            )
+            self.display_image(frame, c)
         self._set_sliders(indices)
         # Handle Autoscaling
         slider = self.channel_row.boxes[indices["c"]].slider
@@ -252,6 +269,7 @@ class StackViewer(QtWidgets.QWidget):
                 [min(slider.minimum(), img.min()), max(slider.maximum(), img.max())]
             )
         self.on_clim_timer(indices["c"])
+        # print("StackViewer received image and tried to display", img.max())
 
     def _set_sliders(self, indices: dict) -> None:
         """New indices from outside the sliders, update."""
