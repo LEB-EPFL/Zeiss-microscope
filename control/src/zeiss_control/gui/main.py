@@ -3,6 +3,7 @@ from pymmcore_plus import CMMCorePlus
 from pymmcore_widgets import (GroupPresetTableWidget, StageWidget, LiveButton, SnapButton,
                               ExposureWidget, ChannelGroupWidget, ShuttersWidget)
 from zeiss_control.gui.mda import ZeissMDAWidget
+from zeiss_control.gui.preview import Preview
 import os
 from zeiss_control.gui._util.dark_theme import set_eda
 from zeiss_control.gui._util.qt_classes import QMainWindowRestore, QWidgetRestore
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     stages.show()
 
     from pymmcore_widgets import ImagePreview
-    preview = ImagePreview(mmcore=mmc)
+    preview = Preview(mmcore=mmc)
     preview.show()
 
     #GUI

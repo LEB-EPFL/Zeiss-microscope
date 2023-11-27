@@ -72,10 +72,7 @@ class ZeissMDAWidget(MDAWidget):
                 settings_dict = json.load(file)
             if settings_dict == {}:
                 raise FileNotFoundError
-            print(settings_dict)
-            print(settings_dict.__class__)
             settings_dict = re.sub(r"stage_positions\": \[.*?\]", "stage_positions\": []", settings_dict)
-            print(settings_dict)
             settings = MDASequence().parse_raw(settings_dict)
             if self.saving:
                 with self.saving_file.open("r") as file:

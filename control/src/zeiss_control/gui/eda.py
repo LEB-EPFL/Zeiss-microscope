@@ -1,6 +1,8 @@
 from qtpy.QtWidgets import QApplication, QDockWidget
 from qtpy.QtCore import Qt
 from zeiss_control.gui.main import Zeiss_StageWidget, MainWindow
+from zeiss_control.gui.preview import Preview
+
 from zeiss_control.gui._util.qt_classes import QWidgetRestore, QMainWindowRestore
 from pymmcore_widgets import GroupPresetTableWidget
 import sys 
@@ -47,8 +49,7 @@ except:
     mmc.loadSystemConfiguration()
 
 
-from pymmcore_widgets import ImagePreview
-preview = ImagePreview(mmcore=mmc)
+preview = Preview(mmcore=mmc)
 preview.show()
 
 #GUI
