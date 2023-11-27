@@ -62,7 +62,7 @@ frame.show()
 
 
 if frame.eda_window:
-    keras = False #"sim_net_img"
+    keras = "sim_net_img"
     manual = True
     print("Spinning up EDA")
     from eda_plugin.utility.core_event_bus import CoreEventBus

@@ -6,6 +6,8 @@ Should be replaced once this is merged.
 from __future__ import annotations
 from pymmcore_plus import CMMCorePlus
 
+from zeiss_control.output.datastore import QLocalDataStore
+
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 
@@ -17,7 +19,8 @@ if TYPE_CHECKING:
 
 
 class CoreOMETiffWriter:
-    def __init__(self, filename: Path | str, mmcore: CMMCorePlus = None) -> None:
+    def __init__(self, filename: Path | str, mmcore: CMMCorePlus,
+                 datastore: QLocalDataStore) -> None:
         try:
             import tifffile  # noqa: F401
         except ImportError as e:  # pragma: no cover
@@ -30,14 +33,17 @@ class CoreOMETiffWriter:
         self._filename = filename
         self._mmap: None | np.memmap = None
         self._mmc = mmcore
+        self.datastore = datastore
 
         self._mmc.mda.events.sequenceStarted.connect(self.sequenceStarted)
-        self._mmc.mda.events.frameReady.connect(self.frameReady)
+        self.datastore.frame_ready.connect(self.frameReady)
 
     def sequenceStarted(self, seq: useq.MDASequence) -> None:
         self._set_sequence(seq)
 
-    def frameReady(self, frame: np.ndarray, event: useq.MDAEvent,) -> None:
+    def frameReady(self, event: useq.MDAEvent,) -> None:
+        index = (event.index.get("t", 0), event.index.get("z", 0), event.index.get("c", 0))
+        frame = self.datastore.get_frame(index)
         if event is None:
             return
         if self._mmap is None:

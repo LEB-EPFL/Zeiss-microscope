@@ -42,13 +42,11 @@ class StackViewer(QWidgetRestore):
         datastore: QLocalDataStore,
         sequence: MDASequence | None = None,
         mmcore: CMMCorePlus | None = None,
-        eda: bool | None = False,
         parent: QWidget | None = None,
     ):
         super().__init__(parent=parent)
         self._mmc = mmcore or CMMCorePlus.instance()
         self.sequence = sequence
-        self.eda = eda
 
         self._clim = "auto"
         self.cmap_names = ["Gray", "cyan", "yellow", "magenta"]
@@ -120,10 +118,6 @@ class StackViewer(QWidgetRestore):
         # Channels
         nc = sequence.sizes.get("c", 1)
         self.channels = list(sequence.channels)
-        if self.eda:
-            #Add the channel for the network image
-            nc += 1
-            self.channels.append(Channel(config="Network"))
         # print("StackViewer channels", self.channels)
         self.images = []
         for i in range(nc):
@@ -176,7 +170,6 @@ class StackViewer(QWidgetRestore):
 
     def _create_sliders(self, sequence: MDASequence | None = None) -> None:
         n_channels = 5 if sequence is None else sequence.sizes.get("c", 5)
-        n_channels = n_channels + 1 if self.eda else n_channels
         self.channel_row = ChannelRow(n_channels, self.cmaps)
         self.channel_row.visible.connect(self._handle_channel_visibility)
         self.channel_row.autoscale.connect(self._handle_channel_autoscale)
