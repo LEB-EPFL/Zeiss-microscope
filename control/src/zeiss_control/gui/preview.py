@@ -9,14 +9,14 @@ from tifffile import imsave
 from pathlib import Path
 import numpy as np
 from vispy import scene, visuals
-from pymmcore_widgets._mda._util._hist import HistPlot
+import json
 
-from isim_control.settings_translate import load_settings, save_settings
-from isim_control.gui.assets.qt_classes import QWidgetRestore
+from zeiss_control.gui._util.qt_classes import QWidgetRestore
 
-class iSIMPreview(QWidgetRestore):
-    def __init__(self, parent: QWidget | None = None, mmcore: CMMCorePlus | None = None,
-                 key_listener: QObject | None = None):
+_DEFAULT_WAIT = 20
+
+class Preview(QWidgetRestore):
+    def __init__(self, parent: QWidget | None = None, mmcore: CMMCorePlus | None = None):
         super().__init__(parent=parent)
         self._mmc = mmcore
         self.current_frame = None
@@ -33,7 +33,6 @@ class iSIMPreview(QWidgetRestore):
 
         self.setWindowTitle("Preview")
         self.setLayout(QGridLayout())
-
         self.layout().addWidget(self.preview, 0, 0, 1, 5)
 
         self.save_btn = QPushButton("Save")
@@ -46,11 +45,7 @@ class iSIMPreview(QWidgetRestore):
         self.layout().addWidget(self.save_btn, 1, 0)
         self.layout().addWidget(self.collapse_btn, 1, 4)
 
-        if key_listener:
-            self.key_listener = key_listener
-            self.installEventFilter(self.key_listener)
-
-    def new_frame(self, image, event, meta):
+    def new_frame(self, image):
         self.current_frame = image
 
     def save_image(self):
@@ -58,22 +53,42 @@ class iSIMPreview(QWidgetRestore):
             self.save_loc, _ = QFileDialog.getSaveFileName(directory=self.save_loc)
             print(self.save_loc)
             try:
-                imsave(self.save_loc[0], self.current_frame)
+                imsave(self.save_loc, self.current_frame)
             except Exception as e:
                 import traceback
                 print(traceback.format_exc())
 
     def collapse_view(self):
-        self.preview.view.camera.set_range(margin=0)
+        self.preview.view.camera.set_range()
 
     def closeEvent(self, event):
         settings = {"path": str(self.save_loc),
                     "rot": self.rot,
                     "mirror_x": self.mirror_x,
                     "mirror_y": self.mirror_y}
-        save_settings(settings, "live_view")
+        self.save_settings(settings)
         super().closeEvent(event)
 
+    def save_settings(self, my_settings):
+        file = Path.home() / ".zeiss_control" / "preview.json"
+        file.parent.mkdir(parents=True, exist_ok=True)
+        with file.open("w") as file:
+            json.dump(my_settings, file)
+        pass
+
+    def load_settings(self):
+        file = Path.home() / ".zeiss_control" / "preview.json"
+        try:
+            with file.open("r") as file:
+                settings_dict = json.load(file)
+        except (FileNotFoundError, TypeError, AttributeError, json.decoder.JSONDecodeError) as e:
+                print(e)
+                print("New Settings for this user")
+                settings_dict = {"path": Path.home() / "Desktop" / "MyTiff.ome.tif",
+                                 "rot": 0,
+                                 "mirror_x": False,
+                                 "mirror_y": False}
+        return settings_dict
 
 
 class Canvas(QWidget):
@@ -93,10 +108,8 @@ class Canvas(QWidget):
         super().__init__(parent=parent)
         self._mmc = mmcore or CMMCorePlus.instance()
         self._imcls = scene.visuals.Image
-        self._clim_mode: dict = {}
-        self._clims: dict = {}
+        self._clims: tuple[float, float] | str = "auto"
         self._cmap: str = "grays"
-        self.last_channel = None
 
         self._canvas = scene.SceneCanvas(
             keys="interactive", size=(512, 512), parent=self
@@ -109,9 +122,6 @@ class Canvas(QWidget):
         self.setLayout(QVBoxLayout())
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().addWidget(self._canvas.native)
-
-        self.histogram = HistPlot()
-        self.layout().addWidget(self.histogram)
 
         self.max_slider = 1
         self.clim_slider = QRangeSlider(QtCore.Qt.Horizontal)
@@ -126,31 +136,42 @@ class Canvas(QWidget):
 
         self.layout().addLayout(self.clim_layout)
 
+        #Streaming when live
+        self.streaming_timer = QtCore.QTimer(parent=self)
+        self.streaming_timer.setTimerType(QtCore.Qt.TimerType.PreciseTimer)
+        self.streaming_timer.setInterval(int(self._mmc.getExposure()) or _DEFAULT_WAIT)
+        self.streaming_timer.timeout.connect(self._on_image_snapped)
+
+        self._mmc.events.continuousSequenceAcquisitionStarted.connect(self._on_streaming_start)
+        self._mmc.events.sequenceAcquisitionStopped.connect(self._on_streaming_stop)
+        self._mmc.events.exposureChanged.connect(self._on_exposure_changed)
+
+        self.destroyed.connect(self._disconnect)
+
+    def _disconnect(self) -> None:
+        ev = self._mmc.events
+        ev.continuousSequenceAcquisitionStarted.disconnect(self._on_streaming_start)
+        ev.sequenceAcquisitionStopped.disconnect(self._on_streaming_stop)
+        ev.exposureChanged.disconnect(self._on_exposure_changed)
+
+    def _on_exposure_changed(self, device: str, value: str) -> None:
+        self.streaming_timer.setInterval(max(20, int(value)))
+
+    def _on_streaming_start(self) -> None:
+        self.streaming_timer.start()
+
+    def _on_streaming_stop(self) -> None:
+        self.streaming_timer.stop()
+
     def update_clims(self, value: tuple[int, int]) -> None:
-        if not self._clims:
-            return
         self.auto_clim.setChecked(False)
-        self._clims[self.last_channel] = (value[0], value[1])
+        self._clims = (value[0], value[1])
 
     def update_auto(self, state: int) -> None:
         if state == 2:
-            self._clim_mode[self.last_channel] = "auto"
-        elif state == 0:
-            self._clim_mode[self.last_channel] = "manual"
+            self._clims = "auto"
 
-    def _adjust_channel(self, channel: str) -> None:
-        if channel == self.last_channel:
-            return
-        self.histogram.set_max(self._clims.get(channel, (0, 2))[1])
-        block = self.clim_slider.blockSignals(True)
-        self.clim_slider.setMaximum(self._clims.get(channel, (0, 2))[1])
-        self.clim_slider.blockSignals(block)
-        block = self.auto_clim.blockSignals(True)
-        self.auto_clim.setChecked(self._clim_mode.get(channel, "auto") == "auto")
-        self.auto_clim.blockSignals(block)
-
-    def _on_image_snapped(self, img: np.ndarray | None = None, channel: str|None = None) -> None:
-        self._adjust_channel(channel)
+    def _on_image_snapped(self, img: np.ndarray | None = None) -> None:
         if img is None:
             try:
                 img = self._mmc.getLastImage()
@@ -159,18 +180,14 @@ class Canvas(QWidget):
         img_max = img.max()
         #TODO: We might want to do this per channel
         slider_max = max(img_max, self.clim_slider.maximum())
-        if self._clim_mode.get(channel, "auto") == "auto":
-            clim = (img.min(), img_max)
-            self._clims[channel] = clim
-        else:
-            clim = self._clims.get(channel, (0, 1))
+        clim = (img.min(), img_max) if self._clims == "auto" else self._clims
         if self.image is None:
             self.image = self._imcls(
                 img, cmap=self._cmap, clim=clim, parent=self.view.scene
             )
             trans = visuals.transforms.linear.MatrixTransform()
             trans.rotate(self.rot, (0, 0, 1))
-            trans.translate((img.shape[0], 0, 0))
+            trans.translate((0, 0, 0))
             print("image rotated by", self.rot)
             self.image.transform = trans
             self.view.camera.set_range(margin=0)
@@ -181,11 +198,7 @@ class Canvas(QWidget):
                 block = self.clim_slider.blockSignals(True)
                 self.clim_slider.setValue(clim)
                 self.clim_slider.blockSignals(block)
-        if slider_max > self.clim_slider.maximum():
+        if slider_max != self.clim_slider.maximum():
             block = self.clim_slider.blockSignals(True)
             self.clim_slider.setRange(0, slider_max)
             self.clim_slider.blockSignals(block)
-            self.histogram.set_max(slider_max)
-
-        self.histogram.update_data(img)
-        self.last_channel = channel
