@@ -20,7 +20,7 @@ class Preview(QWidgetRestore):
         super().__init__(parent=parent)
         self._mmc = mmcore
         self.current_frame = None
-        settings = self.load_settings()
+        settings = load_settings("live_view")
         self.save_loc = settings.get("path", Path.home())
         self.rot = settings.get("rot", 90)
         self.mirror_x = settings.get("mirror_x", False)
@@ -28,8 +28,8 @@ class Preview(QWidgetRestore):
 
         self.preview = Canvas(mmcore=mmcore, rot=self.rot, mirror_x=self.mirror_x,
                               mirror_y=self.mirror_y)
-        self._mmc.events.imageSnapped.connect(self.preview._on_image_snapped)
-        self._mmc.events.imageSnapped.connect(self.new_frame)
+        self._mmc.events.liveFrameReady.connect(self.preview._on_image_snapped)
+        self._mmc.events.liveFrameReady.connect(self.new_frame)
 
         self.setWindowTitle("Preview")
         self.setLayout(QGridLayout())
