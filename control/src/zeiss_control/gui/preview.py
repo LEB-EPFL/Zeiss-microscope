@@ -14,6 +14,8 @@ from pymmcore_widgets._mda._util._hist import HistPlot
 from isim_control.settings_translate import load_settings, save_settings
 from isim_control.gui.assets.qt_classes import QWidgetRestore
 
+
+#This comment is to track updates
 class iSIMPreview(QWidgetRestore):
     def __init__(self, parent: QWidget | None = None, mmcore: CMMCorePlus | None = None,
                  key_listener: QObject | None = None):
