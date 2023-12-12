@@ -63,8 +63,8 @@ frame.show()
 
 
 if frame.eda_window:
-    keras = "sim_net_img"
-    manual = True
+    keras = True #"sim_net_img"
+    manual = False
     print("Spinning up EDA")
     from eda_plugin.utility.core_event_bus import CoreEventBus
     if keras is True:
@@ -92,9 +92,12 @@ if frame.eda_window:
     gui.add_dock_widget(actuator.gui, "Actuator")
     gui.show()
 
+    from zeiss_control.gui.event_score import EventScorePlot
+    score = EventScorePlot(event_bus)
+    score.show()
 
     from zeiss_control.gui._util.dark_theme import set_eda
-    for widget in [analyser.gui, interpreter.gui, actuator.gui, gui]:
+    for widget in [analyser.gui, interpreter.gui, actuator.gui, gui, score]:
         set_eda(widget)
 
 
