@@ -15,6 +15,8 @@ from zeiss_control.gui._util.qt_classes import QWidgetRestore
 
 _DEFAULT_WAIT = 20
 
+
+#This comment is to track updates
 class Preview(QWidgetRestore):
     def __init__(self, parent: QWidget | None = None, mmcore: CMMCorePlus | None = None):
         super().__init__(parent=parent)
