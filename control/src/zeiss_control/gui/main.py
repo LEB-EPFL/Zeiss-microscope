@@ -85,9 +85,14 @@ if __name__ == "__main__":
     set_dark(app)
 
     mmc = CMMCorePlus.instance()
-    mmc.loadSystemConfiguration("C:/Control/Zeiss-microscope/231031_ZeissAxioObserver7.cfg")
+    try:
+        mmc.loadSystemConfiguration("C:/Control/Zeiss-microscope/231031_ZeissAxioObserver7.cfg")
+        stages = Zeiss_StageWidget(mmc)
+    except FileNotFoundError:
+        print("Couldn't load the Zeiss, going for Demo config")
+        mmc.loadSystemConfiguration()
+        stages = StageWidget("XY", mmcore=mmc)
 
-    stages = Zeiss_StageWidget(mmc)
     stages.show()
 
     from pymmcore_widgets import ImagePreview
@@ -102,7 +107,7 @@ if __name__ == "__main__":
     group_presets.show() # needed to keep events alive?
     frame.show()
 
-    from zeiss_control.output import OutputGUI
+    from zeiss_control.gui.output import OutputGUI
     output = OutputGUI(mmc, frame.mda_window)
     app.exec_()
 

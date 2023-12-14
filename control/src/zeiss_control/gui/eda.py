@@ -5,7 +5,7 @@ from zeiss_control.gui.preview import Preview
 
 from zeiss_control.gui._util.qt_classes import QWidgetRestore, QMainWindowRestore
 from pymmcore_widgets import GroupPresetTableWidget
-import sys 
+import sys
 
 
 class EDAMainGUI(QMainWindowRestore):
@@ -63,7 +63,7 @@ frame.show()
 
 
 if frame.eda_window:
-    keras = True #"sim_net_img"
+    keras = False #"sim_net_img"
     manual = False
     print("Spinning up EDA")
     from eda_plugin.utility.core_event_bus import CoreEventBus
@@ -76,11 +76,11 @@ if frame.eda_window:
     if manual:
         from eda_plugin.interpreters.manual import ManualInterpreter as Interpreter
     else:
-        from eda_plugin.interpreters.presets import PresetsInterpreter as Interpreter
-    from eda_plugin.actuators.pymmc_engine import CoreRunner
+        from eda_plugin.interpreters.frame_rate import BinaryFrameRateInterpreter as Interpreter
+    from eda_plugin.actuators.pymmc import CoreActuator as CoreRunner
 
 
-    event_bus = CoreEventBus(mmc, frame.mda_window, frame.eda_window)
+    event_bus = CoreEventBus(mmc)#, frame.mda_window, frame.eda_window)
 
     actuator = CoreRunner(mmc, event_bus)
     analyser = Analyser(event_bus)
