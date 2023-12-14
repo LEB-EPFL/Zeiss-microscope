@@ -52,6 +52,9 @@ class Preview(QWidgetRestore):
             self.key_listener = key_listener
             self.installEventFilter(self.key_listener)
 
+    def config_changed(self, group: str, value: str):
+        print("CHANGE")
+
     def new_frame(self, image):
         self.current_frame = image
 
@@ -119,6 +122,7 @@ class Canvas(QWidget):
         self._clims: dict = {}
         self._cmap: str = "grays"
         self.last_channel = None
+        self.current_channel = self._mmc.getConfigGroupState("Channel")
 
         self._canvas = scene.SceneCanvas(
             keys="interactive", size=(512, 512), parent=self
@@ -139,6 +143,7 @@ class Canvas(QWidget):
         self.clim_slider = QRangeSlider(QtCore.Qt.Horizontal)
         self.clim_slider.setRange(0, self.max_slider)
         self.clim_slider.valueChanged.connect(self.update_clims)
+
         self.auto_clim = QCheckBox("Auto")
         self.auto_clim.setChecked(True)
         self.auto_clim.stateChanged.connect(self.update_auto)
@@ -180,6 +185,7 @@ class Canvas(QWidget):
             return
         self.auto_clim.setChecked(False)
         self._clims[self.last_channel] = (value[0], value[1])
+        self.image.clim = (value[0], value[1])
 
     def update_auto(self, state: int) -> None:
         if state == 2:
@@ -190,7 +196,7 @@ class Canvas(QWidget):
     def _adjust_channel(self, channel: str) -> None:
         if channel == self.last_channel:
             return
-        self.histogram.set_max(self._clims.get(channel, (0, 2))[1])
+        # self.histogram.set_max(self._clims.get(channel, (0, 2))[1])
         block = self.clim_slider.blockSignals(True)
         self.clim_slider.setMaximum(self._clims.get(channel, (0, 2))[1])
         self.clim_slider.blockSignals(block)
@@ -199,6 +205,7 @@ class Canvas(QWidget):
         self.auto_clim.blockSignals(block)
 
     def _on_image_snapped(self, img: np.ndarray | None = None, channel: str|None = None) -> None:
+        channel = self._mmc.getCurrentConfig("Channel")
         self._adjust_channel(channel)
         if img is None:
             try:
@@ -234,7 +241,8 @@ class Canvas(QWidget):
             block = self.clim_slider.blockSignals(True)
             self.clim_slider.setRange(0, slider_max)
             self.clim_slider.blockSignals(block)
+
         #     self.histogram.set_max(slider_max)
 
         # self.histogram.update_data(img)
-        # self.last_channel = channel
+        self.last_channel = channel

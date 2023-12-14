@@ -10,7 +10,7 @@ from zeiss_control.gui._util.qt_classes import QMainWindowRestore, QWidgetRestor
 
 os.environ['MICROMANAGER_PATH'] = "C:/Program Files/Micro-Manager-2.0"
 class MainWindow(QMainWindowRestore):
-    def __init__(self, mmcore:CMMCorePlus, eda:bool=False):
+    def __init__(self, mmcore:CMMCorePlus, eda:bool=False, demo_config: bool=False):
         super().__init__()
         self.main = QWidget()
         self.setWindowTitle("Micro-Manager")
@@ -33,7 +33,7 @@ class MainWindow(QMainWindowRestore):
 
         self.main.layout().addWidget(self.exposure, 0, 2)
         self.main.layout().addWidget(self.channel_group, 1, 2)
-        try:
+        if not demo_config:
             self.shutter_refl = ShuttersWidget('ZeissReflectedLightShutter', mmcore=mmcore)
             self.fluo_label = QLabel("Fluorescence")
             self.shutter_trans = ShuttersWidget('ZeissTransmittedLightShutter', mmcore=mmcore)
@@ -42,8 +42,6 @@ class MainWindow(QMainWindowRestore):
             self.main.layout().addWidget(self.fluo_label, 3, 1)
             self.main.layout().addWidget(self.shutter_trans, 2, 2)
             self.main.layout().addWidget(self.brightfield_label, 3, 2)
-        except:
-            pass # Not on the Zeiss, omit this
 
         self.mda_button.pressed.connect(self._mda)
 
@@ -88,10 +86,12 @@ if __name__ == "__main__":
     try:
         mmc.loadSystemConfiguration("C:/Control/Zeiss-microscope/231031_ZeissAxioObserver7.cfg")
         stages = Zeiss_StageWidget(mmc)
+        demo_config = False
     except FileNotFoundError:
         print("Couldn't load the Zeiss, going for Demo config")
         mmc.loadSystemConfiguration()
         stages = StageWidget("XY", mmcore=mmc)
+        demo_config = True
 
     stages.show()
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     preview.show()
 
     #GUI
-    frame = MainWindow(mmc)
+    frame = MainWindow(mmc, demo_config=demo_config)
 
     group_presets = GroupPresetTableWidget(mmcore=mmc)
     frame.main.layout().addWidget(group_presets, 5, 0, 1, 3)
@@ -111,6 +111,8 @@ if __name__ == "__main__":
     output = OutputGUI(mmc, frame.mda_window)
     app.exec_()
 
-    if frame.eda:
+    try:
         from eda_plugin.utility.core_event_bus import CoreEventBus
         event_bus = CoreEventBus()
+    except:
+        pass
