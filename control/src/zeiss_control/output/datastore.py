@@ -9,7 +9,6 @@ from pymmcore_plus import CMMCorePlus
 from qtpy import QtCore, QtGui
 from qtpy.QtCore import Signal
 from useq import MDAEvent
-from eda_plugin.utility.core_event_bus import CoreEventBus
 
 if TYPE_CHECKING:
     from qtpy.QtWidgets import QWidget
@@ -28,63 +27,56 @@ class QLocalDataStore(QtCore.QObject):
         dtype: npt.DTypeLike = np.uint16,
         parent: QWidget | None = None,
         mmcore: CMMCorePlus | None = None,
-        eda_event_bus: CoreEventBus | None = None,
+        gui: bool = True,
     ):
         super().__init__(parent=parent)
         self.dtype = np.dtype(dtype)
         self.array: np.ndarray = np.ndarray(shape, dtype=self.dtype)
 
         self._mmc: CMMCorePlus = mmcore or CMMCorePlus.instance()
-        self.eda_event_bus: CoreEventBus = eda_event_bus
 
-        self.listener = self.EventListener(self._mmc, self.eda_event_bus, self.array.shape[2])
+        self.listener = self.EventListener(self._mmc)
         self.listener.start()
         self.listener.frame_ready.connect(self.new_frame)
+        # if gui:
+        #     self.gui = SaveButton(self)
 
     class EventListener(QtCore.QThread):
         """Receive events in a separate thread."""
 
         frame_ready = Signal(np.ndarray, MDAEvent)
 
-        def __init__(self, mmcore: CMMCorePlus, eda_event_bus: CoreEventBus = None,
-                     channels: int = None):
+        def __init__(self, mmcore: CMMCorePlus):
             super().__init__()
             self._mmc = mmcore
             self._mmc.mda.events.frameReady.connect(self.on_frame_ready)
-            self.channels = channels
-            if eda_event_bus:
-                self.eda_event_bus = eda_event_bus
-                self.eda_event_bus.new_network_image.connect(self.on_network_image)
 
         def on_frame_ready(self, img: np.ndarray, event: MDAEvent) -> None:
-            self.frame_ready.emit(img, event)
-
-        def on_network_image(self, img: np.ndarray, timepoint: tuple):
-            # print("NETWORK IMAGE IN DATASTORE", img.min(), img.max())
-            event = MDAEvent(channel={"config": "Network"}, index={'t': timepoint[0], 'c': self.channels-1})
-            self.frame_ready.emit(img, event)
+            if event:
+                self.frame_ready.emit(img, event)
 
         def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+            self._mmc.mda.events.frameReady.disconnect(self.on_frame_ready)
             super().exit()
             event.accept()
 
     def new_frame(self, img: np.ndarray, event: MDAEvent) -> None:
         self.shape = img.shape
         indices = self.complement_indices(event)
-        # print("ADDING IMAGE TO DATASTORE", img.max())
         try:
-            self.array[indices["t"], indices["z"], indices["c"], :, :] = img
+            self.array[
+                indices["t"], indices["z"], indices["c"], indices.get("g", 0) :, :
+            ] = img
         except IndexError:
             self.correct_shape(indices)
             self.new_frame(img, event)
             return
-        # print("ADDED IMAGE TO DATASTORE", img.max(), indices)
         self.frame_ready.emit(event)
 
     def get_frame(self, key: tuple) -> np.ndarray:
         return np.array(self.array[key])
 
-    def complement_indices(self, event: MDAEvent|dict) -> dict:
+    def complement_indices(self, event: MDAEvent | dict) -> dict:
         indices = dict(copy.deepcopy(dict(event.index)))
         for i in DIMENSIONS:
             if i not in indices:
@@ -93,7 +85,7 @@ class QLocalDataStore(QtCore.QObject):
 
     def correct_shape(self, indices: dict) -> None:
         """The initialised shape does not fit the data, extend the array."""
-        min_shape = [indices["t"], indices["z"], indices["c"]]
+        min_shape = [indices["t"], indices["z"], indices["c"], indices.get("g", 0)]
         diff = [x - y + 1 for x, y in zip(min_shape, self.array.shape[:-2])]
         for i, app in enumerate(diff):
             if app > 0:
@@ -107,3 +99,4 @@ class QLocalDataStore(QtCore.QObject):
     def __del__(self) -> None:
         self.listener.exit()
         self.listener.wait()
+        super().__del__()
