@@ -281,8 +281,8 @@ class StackViewer(QWidgetRestore):
             return
         if (sequence := self.sequence) is None:
             return
-        for g in range(sequence.sizes.get("g", 1)):
-            for c in range(sequence.sizes.get("c", 1)):
+        for g in range(max(sequence.sizes.get("g", 1), 1)):
+            for c in range(max(sequence.sizes.get("c", 1), 1)):
                 frame = self.datastore.get_frame(
                     (self.display_index["t"], self.display_index["z"], c, g)
                 )
