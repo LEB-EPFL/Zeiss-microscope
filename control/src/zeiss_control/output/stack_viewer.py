@@ -58,7 +58,6 @@ class StackViewer(QWidgetRestore):
         self.canvas_size = size
         self.transform = transform
         self._clim = "auto"
-
         self.cmaps = [try_cast_colormap(x) for x in self.cmap_names]
         self.display_index = {dim: 0 for dim in DIMENSIONS}
 
@@ -110,7 +109,7 @@ class StackViewer(QWidgetRestore):
         else:
             self.img_size = (self._mmc.getImageHeight(), self._mmc.getImageWidth())
         if self.img_size == (0, 0):
-            self.img_size = (2048, 2048)
+            self.img_size = (512, 512)
         self._canvas = scene.SceneCanvas(
             size=self.img_size, parent=self, keys="interactive"
         )
@@ -304,26 +303,35 @@ class StackViewer(QWidgetRestore):
         )
 
         # Update display
-        self.display_image(img, indices.get("c", 0), indices.get("g", 0))
-        self._set_sliders(indices)
-        # Handle Autoscaling
-        slider = self.channel_row.boxes[indices["c"]].slider
-        slider.setRange(
-            min(slider.minimum(), img.min()), max(slider.maximum(), img.max())
-        )
-        if self.channel_row.boxes[indices["c"]].autoscale_chbx.isChecked():
-            slider.setValue(
-                [min(slider.minimum(), img.min()), max(slider.maximum(), img.max())]
+        display_indices = self._set_sliders(indices)
+        if display_indices == indices:
+            self.display_image(img, indices.get("c", 0), indices.get("g", 0))
+            # Handle Autoscaling
+            clim_slider = self.channel_row.boxes[indices["c"]].slider
+            clim_slider.setRange(
+                min(clim_slider.minimum(), img.min()),
+                max(clim_slider.maximum(), img.max()),
             )
-        self.on_clim_timer(indices["c"])
-        # print("StackViewer received image and tried to display", img.max())
+            if self.channel_row.boxes[indices["c"]].autoscale_chbx.isChecked():
+                clim_slider.setValue(
+                    [
+                        min(clim_slider.minimum(), img.min()),
+                        max(clim_slider.maximum(), img.max()),
+                    ]
+                )
+            self.on_clim_timer(indices["c"])
 
     def _set_sliders(self, indices: dict) -> None:
         """New indices from outside the sliders, update."""
+        display_indices = copy.deepcopy(indices)
         for slider in self.sliders:
+            if slider.lock_btn.isChecked():
+                display_indices[slider.name] = slider.value()
+                continue
             slider.blockSignals(True)
             slider.setValue(indices[slider.name])
             slider.blockSignals(False)
+        return display_indices
 
     def display_image(self, img: np.ndarray, channel: int = 0, grid: int = 0) -> None:
         self.images[channel][grid].set_data(img)
