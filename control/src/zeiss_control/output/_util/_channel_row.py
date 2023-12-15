@@ -20,7 +20,7 @@ except ImportError as e:
     ) from e
 
 
-CMAPS = ["Gray", "BOP_Blue", "BOP_Purple"]
+CMAPS = ["gray", "BOP_Blue", "BOP_Purple"]
 
 
 class ChannelRow(QtWidgets.QWidget):
@@ -82,6 +82,8 @@ class ChannelRow(QtWidgets.QWidget):
             if channel_box.channel != channel:
                 channel_box.setStyleSheet("ChannelBox{border: 1px solid}")
             else:
+                channel_box.setStyleSheet("ChannelBox{border: 3px solid}")
+                channel_box.show_channel.setChecked(True)
                 self.selected.emit(idx)
 
 
@@ -113,12 +115,13 @@ class ChannelBox(QtWidgets.QFrame):
         self.autoscale_chbx = QtWidgets.QCheckBox("Auto")
         self.autoscale_chbx.setChecked(False)
         self.layout().addWidget(self.autoscale_chbx, 0, 2)
+        # self.histogram = HistPlot()
+        # self.layout().addWidget(self.histogram, 1, 0, 1, 3)
         self.slider = QRangeSlider(QtCore.Qt.Horizontal)
-        self.layout().addWidget(self.slider, 1, 0, 1, 3)
+        self.layout().addWidget(self.slider, 2, 0, 1, 3)
         self.setStyleSheet("ChannelBox{border: 1px solid}")
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
-        self.setStyleSheet("ChannelBox{border: 3px solid}")
         self.clicked.emit(self.channel)
 
 
