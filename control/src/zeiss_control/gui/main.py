@@ -90,6 +90,8 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("Couldn't load the Zeiss, going for Demo config")
         mmc.loadSystemConfiguration()
+        mmc.setProperty("Camera", "OnCameraCCDXSize", 2048)
+        mmc.setProperty("Camera", "OnCameraCCDYSize", 2048)
         stages = StageWidget("XY", mmcore=mmc)
         demo_config = True
 

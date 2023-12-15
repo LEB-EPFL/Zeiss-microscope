@@ -65,6 +65,7 @@ class QLocalDataStore(QtCore.QObject):
             self.frame_ready.emit(img, event)
 
         def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+            self._mmc.mda.events.frameReady.disconnect(self.on_frame_ready)
             super().exit()
             event.accept()
 
@@ -73,7 +74,9 @@ class QLocalDataStore(QtCore.QObject):
         indices = self.complement_indices(event)
         # print("ADDING IMAGE TO DATASTORE", img.max())
         try:
-            self.array[indices["t"], indices["z"], indices["c"], :, :] = img
+            self.array[
+                indices["t"], indices["z"], indices["c"], indices.get("g", 0) :, :
+            ] = img
         except IndexError:
             self.correct_shape(indices)
             self.new_frame(img, event)
@@ -84,7 +87,7 @@ class QLocalDataStore(QtCore.QObject):
     def get_frame(self, key: tuple) -> np.ndarray:
         return np.array(self.array[key])
 
-    def complement_indices(self, event: MDAEvent|dict) -> dict:
+    def complement_indices(self, event: MDAEvent | dict) -> dict:
         indices = dict(copy.deepcopy(dict(event.index)))
         for i in DIMENSIONS:
             if i not in indices:
@@ -93,7 +96,7 @@ class QLocalDataStore(QtCore.QObject):
 
     def correct_shape(self, indices: dict) -> None:
         """The initialised shape does not fit the data, extend the array."""
-        min_shape = [indices["t"], indices["z"], indices["c"]]
+        min_shape = [indices["t"], indices["z"], indices["c"], indices.get("g", 0)]
         diff = [x - y + 1 for x, y in zip(min_shape, self.array.shape[:-2])]
         for i, app in enumerate(diff):
             if app > 0:

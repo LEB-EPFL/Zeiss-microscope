@@ -48,8 +48,11 @@ class ZeissMDAWidget(MDAWidget):
     def on_sequence_finished(self):
         "Increment the saving file name"
         sub_string = re.search(r"_\d{2,5}\.ome\.tiff", self.path.text())
-        number = int(sub_string.group(0)[1:4])
-        self.path.setText(self.path.text().replace(sub_string.group(0), f"_{number + 1:03}.ome.tiff"))
+        try:
+            number = int(sub_string.group(0)[1:4])
+            self.path.setText(self.path.text().replace(sub_string.group(0), f"_{number + 1:03}.ome.tiff"))
+        except:
+            print("Path could not be set, does it end on ome.tiff?")
 
     def new_save_settings_set(self):
         self.new_save_settings.emit(self.save.isChecked(), self.path.text())
@@ -90,13 +93,13 @@ class ZeissMDAWidget(MDAWidget):
             savings_dict = {'save': True, "path": str(Path.home() / 'Desktop/FOV_000.ome.tiff')}
 
         return settings, savings_dict
-    
+
     def closeEvent(self, e):
         self.save_settings()
         self.qt_settings.setValue("size", self.size())
         self.qt_settings.setValue("pos", self.pos())
         return super().closeEvent(e)
-    
+
     def send_new_settings(self):
         self.mda_settings_event.emit(self.get_state())
 
@@ -105,4 +108,3 @@ class ZeissMDAWidget(MDAWidget):
             print(event)
             self.mda_settings_event.emit(self.get_state())
         return super().eventFilter(obj, event)
-    

@@ -50,6 +50,7 @@ class OutputGUI(QObject):
         shape = [sizes.get('t', 1),
                     sizes.get('z', 1),
                     sizes.get('c', 1),
+                    sizes.get('g', 1),
                     self.mmc.getImageHeight(),
                     self.mmc.getImageWidth()]
         return shape, sequence

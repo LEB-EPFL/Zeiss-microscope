@@ -110,7 +110,7 @@ class StackViewer(QWidgetRestore):
         else:
             self.img_size = (self._mmc.getImageHeight(), self._mmc.getImageWidth())
         if self.img_size == (0, 0):
-            self.img_size = (512, 512)
+            self.img_size = (2048, 2048)
         self._canvas = scene.SceneCanvas(
             size=self.img_size, parent=self, keys="interactive"
         )
@@ -141,8 +141,9 @@ class StackViewer(QWidgetRestore):
                 self._slider_settings.emit({"index": dim, "show": False, "max": 1})
 
         # Channels
-        nc = sequence.sizes.get("c", 1)
-        self.ng = sequence.sizes.get("g", 1)
+        nc = max(sequence.sizes.get("c", 1), 1)
+        self.ng = max(sequence.sizes.get("g", 1), 1)
+        print("Number of grid", self.ng)
         self.images = []
 
         for c in range(nc):
