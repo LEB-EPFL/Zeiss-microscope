@@ -6,12 +6,14 @@ Should be replaced once this is merged.
 from __future__ import annotations
 from pymmcore_plus import CMMCorePlus
 
-from zeiss_control.output.datastore import QLocalDataStore
-
+# from zeiss_control.output.datastore import QLocalDataStore
+from eda_plugin.utility.core_event_bus import CoreEventBus
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 from pathlib import Path
 import yaml
+from useq import MDAEvent
+
 
 if TYPE_CHECKING:
 
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class CoreOMETiffWriter:
-    def __init__(self, folder: Path | str, mmcore: CMMCorePlus) -> None:
+    def __init__(self, folder: Path | str, mmcore: CMMCorePlus, event_bus:CoreEventBus) -> None:
         try:
             import tifffile  # noqa: F401
             import yaml
@@ -32,6 +34,7 @@ class CoreOMETiffWriter:
 
         # create an empty OME-TIFF file
         self._folder = Path(folder)
+        self.event_bus = event_bus
 
         self._mmaps: None | np.memmap = None
         self._current_sequence: None | useq.MDASequence = None
@@ -41,9 +44,17 @@ class CoreOMETiffWriter:
         self._mm_config = self._mmc.getSystemState().dict()
         self._mmc.mda.events.sequenceStarted.connect(self.sequenceStarted)
         self._mmc.mda.events.frameReady.connect(self.frameReady)
+        self.event_bus.new_network_image.connect(self.net_frameReady)
 
     def sequenceStarted(self, seq: useq.MDASequence) -> None:
         self._set_sequence(seq)
+
+    def net_frameReady(self, img: np.ndarray, timepoint: tuple):
+        img = img*5000
+        event = MDAEvent(channel={"config": "Network"},
+                          index={'t': timepoint[0],
+                                 'c': self._current_sequence.sizes.get("c", 1)-1})
+        self.frameReady(img, event)
 
     def frameReady(self, frame: np.ndarray, event: useq.MDAEvent) -> None:
         # no meta input for this version yet.
@@ -65,7 +76,7 @@ class CoreOMETiffWriter:
 
         # WRITE DATA TO DISK
         index = tuple(event.index.get(k) for k in self._used_axes)
-
+        print("\033[1mWRITING image from", event.channel.config, "\033[0m")
         mmap[index] = frame
         mmap.flush()
 

@@ -52,9 +52,6 @@ class Preview(QWidgetRestore):
             self.key_listener = key_listener
             self.installEventFilter(self.key_listener)
 
-    def config_changed(self, group: str, value: str):
-        print("CHANGE")
-
     def new_frame(self, image):
         self.current_frame = image
 
@@ -226,10 +223,11 @@ class Canvas(QWidget):
             )
             trans = visuals.transforms.linear.MatrixTransform()
             trans.rotate(self.rot, (0, 0, 1))
-            trans.translate((img.shape[0], 0, 0))
+            translate_x = img.shape[0] if self.rot == 90 else 0
+            trans.translate((translate_x, 0, 0))
             print("image rotated by", self.rot)
             self.image.transform = trans
-            self.view.camera.set_range(margin=0)
+            self.view.camera.set_range(self.image.bounds(0), self.image.bounds(1), margin=0)
         else:
             self.image.set_data(img)
             self.image.clim = clim

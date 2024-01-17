@@ -20,7 +20,8 @@ class QLabeledSlider(superqt.QLabeledSlider):
         super().__init__(orientation, parent)
         self.name = name
         name_label = QtWidgets.QLabel(name.upper())
-
+        self.setSingleStep(1)
+        self.setPageStep(1)
         self._length_label = QtWidgets.QLabel()
         self.rangeChanged.connect(self._on_range_changed)
 

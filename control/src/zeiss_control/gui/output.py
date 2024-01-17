@@ -29,7 +29,7 @@ class OutputGUI(QObject):
         self.datastore = QLocalDataStore(shape, mmcore=self.mmc,
                                           eda_event_bus=self.eda_event_bus)
         if self.save:
-            self.writer = CoreOMETiffWriter(self.path, self.mmc)
+            self.writer = CoreOMETiffWriter(self.path, self.mmc, self.eda_event_bus)
             self.writer.sequenceStarted(sequence)
         self.viewer = StackViewer(datastore=self.datastore, mmcore=self.mmc,
                                   sequence=sequence)

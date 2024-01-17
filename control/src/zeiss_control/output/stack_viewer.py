@@ -365,7 +365,8 @@ class StackViewer(QWidgetRestore):
             )
             self._expand_canvas_view(sub_event)
         else:
-            trans.translate((self.img_size[0], 0, 0))
+            translate_x = self.img_size[0] if self.transform[0] == 90 else 0
+            trans.translate((translate_x, 0, 0))
             self.view_rect = (
                 (0 + self.img_size[0] / 2, 0 - self.img_size[1] / 2),
                 (self.img_size[0], self.img_size[1]),
@@ -380,6 +381,7 @@ class StackViewer(QWidgetRestore):
             event.y_pos / self.pixel_size - self.img_size[1] / 2,
             event.y_pos / self.pixel_size + self.img_size[1] / 2,
         )
+        
         camera_rect = [
             self.view_rect[0][0],
             self.view_rect[0][0] + self.view_rect[1][0],
