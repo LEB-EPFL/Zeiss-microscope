@@ -50,7 +50,6 @@ class CoreOMETiffWriter:
         self._set_sequence(seq)
 
     def net_frameReady(self, img: np.ndarray, timepoint: tuple):
-        img = img*5000
         event = MDAEvent(channel={"config": "Network"},
                           index={'t': timepoint[0],
                                  'c': self._current_sequence.sizes.get("c", 1)-1})
@@ -72,11 +71,14 @@ class CoreOMETiffWriter:
 
             mmap = self._create_seq_memmap(frame, seq)[event.index.get("g", 0)]
         else:
+            print("INDEX---------------\n", event.index)
+            print("n_mmpas:", len(self._mmaps))
             mmap = self._mmaps[event.index.get("g", 0)]
 
         # WRITE DATA TO DISK
         index = tuple(event.index.get(k) for k in self._used_axes)
         print("\033[1mWRITING image from", event.channel.config, "\033[0m")
+        print(frame.max())
         mmap[index] = frame
         mmap.flush()
 
@@ -88,8 +90,8 @@ class CoreOMETiffWriter:
         self._current_sequence = seq
         if seq:
             self._used_axes = tuple(seq.used_axes)
+            self.n_grid_positions = max([seq.sizes.get('g', 1), 1])
             if 'g' in seq.used_axes:
-                self.n_grid_positions = seq.sizes['g']
                 self._used_axes = tuple(a for a in self._used_axes if a != 'g')
         if self._mm_config:
             with open(self._folder/'mm_config.txt', 'w') as outfile:
@@ -150,6 +152,8 @@ class CoreOMETiffWriter:
             _mmap = cast("np.memmap", _mmap)
             _mmap = _mmap.reshape(shape)
             self._mmaps.append(_mmap)
+        print("MMEPS", self._mmaps)
+        print(self.n_grid_positions)
         return self._mmaps
 
     def __del__(self):
