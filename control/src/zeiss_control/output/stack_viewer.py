@@ -46,7 +46,7 @@ class StackViewer(QWidgetRestore):
         mmcore: CMMCorePlus | None = None,
         parent: QWidget | None = None,
         size: tuple[int, int] | None = None,
-        transform: tuple[int, bool, bool] = (0, True, False),
+        transform: tuple[int, bool, bool] = (90, False, True),
     ):
         """Create a new StackViewer widget.
         transform: (int, bool, bool) rotation mirror_x mirror_y

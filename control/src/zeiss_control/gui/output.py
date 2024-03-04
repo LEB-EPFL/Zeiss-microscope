@@ -2,7 +2,8 @@ from pymmcore_plus import CMMCorePlus
 from zeiss_control.output.datastore import QLocalDataStore
 from zeiss_control.output.stack_viewer import StackViewer
 from useq import MDASequence, Channel
-from zeiss_control.output.saver import CoreOMETiffWriter
+from zeiss_control.output.tiff_saver import CoreOMETiffWriter
+from zeiss_control.output.zarr_saver import CoreOMEZarrWriter
 from qtpy.QtCore import QObject
 
 from eda_plugin.utility.core_event_bus import CoreEventBus
@@ -29,7 +30,8 @@ class OutputGUI(QObject):
         self.datastore = QLocalDataStore(shape, mmcore=self.mmc,
                                           eda_event_bus=self.eda_event_bus)
         if self.save:
-            self.writer = CoreOMETiffWriter(self.path, self.mmc, self.eda_event_bus)
+            self.writer = CoreOMEZarrWriter(self.path, self.mmc, self.eda_event_bus)
+            # self.writer = CoreOMETiffWriter(self.path, self.mmc, self.eda_event_bus)
             self.writer.sequenceStarted(sequence)
         self.viewer = StackViewer(datastore=self.datastore, mmcore=self.mmc,
                                   sequence=sequence)

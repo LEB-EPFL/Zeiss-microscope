@@ -44,7 +44,8 @@ try:
     mmc.setConfig("Channel", "Brightfield")
     stages = Zeiss_StageWidget(mmc)
     stages.show()
-except:
+except Exception as e:
+    print(e)
     print("Couldn't load the Zeiss, going for Demo config")
     mmc.loadSystemConfiguration()
 
@@ -80,7 +81,7 @@ if frame.eda_window:
     from eda_plugin.actuators.pymmc_engine import CoreRunner as CoreRunner
 
 
-    event_bus = CoreEventBus(mmc, frame.mda_window, frame.eda_window)
+    event_bus = CoreEventBus(mmc, frame.mda_window, frame.eda_window, preview)
 
     actuator = CoreRunner(mmc, event_bus)
     analyser = Analyser(event_bus)
