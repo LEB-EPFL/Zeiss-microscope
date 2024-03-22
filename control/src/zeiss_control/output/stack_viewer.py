@@ -114,7 +114,7 @@ class StackViewer(QWidgetRestore):
             size=self.img_size, parent=self, keys="interactive"
         )
         self._canvas._send_hover_events = True
-        self._canvas.events.mouse_move.connect(self.on_mouse_move)
+        # self._canvas.events.mouse_move.connect(self.on_mouse_move)
         self.view = self._canvas.central_widget.add_view()
         self.view.camera = scene.PanZoomCamera(aspect=1)
         self.view.camera.flip = (self.transform[1], self.transform[2], False)

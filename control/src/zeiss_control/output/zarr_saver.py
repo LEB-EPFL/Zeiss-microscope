@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 from pymmcore_plus import CMMCorePlus
 from eda_plugin.utility.core_event_bus import CoreEventBus
-
+import time
 
 
 class CoreOMEZarrWriter(OMEZarrWriter):
@@ -24,9 +24,11 @@ class CoreOMEZarrWriter(OMEZarrWriter):
 
     def sequenceStarted(self, seq: MDASequence) -> None:
         self.last_sequence = seq
+        self.start_time = time.perf_counter()
         return super().sequenceStarted(seq)
 
     def net_frameReady(self, img: np.ndarray, timepoint: tuple):
+        print("________________ FRAMEREADY received in CoreOMeZarrWriter ___________________")
         event = MDAEvent(channel={"config": "Network"},
                           index={'t': timepoint[0],
                                  'c': self.current_sequence.sizes.get("c", 1)-1})
@@ -34,4 +36,5 @@ class CoreOMEZarrWriter(OMEZarrWriter):
 
     def frameReady(self, frame: np.ndarray, event: MDAEvent) -> None:
         print("SAVING FRAME", event)
-        return super().frameReady(frame, event, {})
+        timestamp = time.perf_counter() - self.start_time
+        return super().frameReady(frame, event, {"ReceivedTime": timestamp})

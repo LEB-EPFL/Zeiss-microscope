@@ -52,6 +52,10 @@ class ZeissMDAWidget(MDAWidget):
             sub_string = re.search(r"_\d{2,5}\.ome\.tiff", self.path.text())
             number = int(sub_string.group(0)[1:4])
             self.path.setText(self.path.text().replace(sub_string.group(0), f"_{number + 1:03}.ome.tiff"))
+        elif "zarr" in self.path.text():
+            sub_string = re.search(r"_\d{2,5}\.ome\.zarr", self.path.text())
+            number = int(sub_string.group(0)[1:4])
+            self.path.setText(self.path.text().replace(sub_string.group(0), f"_{number + 1:03}.ome.zarr"))
         else:
             sub_strings = self.path.text().split("_")
             number = int(sub_strings[-1])
