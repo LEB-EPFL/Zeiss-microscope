@@ -359,12 +359,10 @@ class Canvas(QWidget):
                     pos[0], pos[1] = pos[1], pos[0]
                 # elif self.parent().rot == 270:
                 #     pos = [mask.shape[0] - pos[0], mask.shape[1] - pos[1]]
-                print(width, height)
-                print(pos)
                 mask[int(np.floor(pos[0]-width/2)): int(np.floor(pos[0]+width/2)),
                      int(np.floor(pos[1]-height/2)): int(np.floor(pos[1]+height/2))] = np.ones([width, height])
                 self.parent().new_mask.emit(mask)
-                self._on_image_snapped(np.random.random((512, 512)) + mask, "default")
+                # self._on_image_snapped(np.random.random((512, 512)) + mask, "default")
             else:
                 self.view.camera._viewbox.events.mouse_move.connect(
                     self.view.camera.viewbox_mouse_event)
@@ -456,14 +454,11 @@ class EditRectVisual(EditVisual):
         self.rect.center = val[0:2]
 
     def update_from_controlpoints(self):
-        try:
-            self.rect.width = abs(self.control_points._width)
-        except ValueError:
-            None
-        try:
-            self.rect.height = abs(self.control_points._height)
-        except ValueError:
-            None
+        self.rect.width = abs(self.control_points._width)
+        self.rect.height =abs(self.control_points._height)
+        self.rect.center = self.control_points.get_center()
+
+
 
 class ControlPoints(scene.visuals.Compound):
     def __init__(self, parent):
@@ -475,6 +470,15 @@ class ControlPoints(scene.visuals.Compound):
         self._height = 0.0
         self.selected_cp = None
         self.opposed_cp = None
+        self.selected_cp_index = None
+        self.opposed_cp_index = None
+
+        self.translate_neighbors = {
+            0: [1, 3],
+            1: [0, 2],
+            2: [3, 1],
+            3: [2, 0]
+        }
 
         self.control_points = [scene.visuals.Markers(parent=self)
                                for i in range(0, 4)]
@@ -488,27 +492,28 @@ class ControlPoints(scene.visuals.Compound):
         self.freeze()
 
     def update_bounds(self):
+        pass
         self._center = [0.5 * (self.parent.bounds(0)[1] +
                                self.parent.bounds(0)[0]),
                         0.5 * (self.parent.bounds(1)[1] +
                                self.parent.bounds(1)[0])]
-        self._width = self.parent.bounds(0)[1] - self.parent.bounds(0)[0]
-        self._height = self.parent.bounds(1)[1] - self.parent.bounds(1)[0]
-        self.update_points()
+        self._width = max([1, self.parent.bounds(0)[1] - self.parent.bounds(0)[0]])
+        self._height = max([1, self.parent.bounds(1)[1] - self.parent.bounds(1)[0]])
+        # self.update_points()
 
     def update_points(self):
         self.control_points[0].set_data(
-            pos=np.array([[self._center[0] - 0.5 * self._width,
-                           self._center[1] + 0.5 * self._height]]))
+                pos=np.array([[self._center[0] - 0.5 * self._width,
+                            self._center[1] + 0.5 * self._height]]))
         self.control_points[1].set_data(
             pos=np.array([[self._center[0] + 0.5 * self._width,
-                           self._center[1] + 0.5 * self._height]]))
+                        self._center[1] + 0.5 * self._height]]))
         self.control_points[2].set_data(
             pos=np.array([[self._center[0] + 0.5 * self._width,
-                           self._center[1] - 0.5 * self._height]]))
+                        self._center[1] - 0.5 * self._height]]))
         self.control_points[3].set_data(
             pos=np.array([[self._center[0] - 0.5 * self._width,
-                           self._center[1] - 0.5 * self._height]]))
+                        self._center[1] - 0.5 * self._height]]))
 
     def select(self, val, obj=None):
         self.visible(val)
@@ -520,9 +525,11 @@ class ControlPoints(scene.visuals.Compound):
             for i in range(0, n_cp):
                 c = self.control_points[i]
                 if c == obj:
+                    self.selected_cp_index = i
                     self.selected_cp = c
                     self.opposed_cp = \
                         self.control_points[int((i + n_cp / 2)) % n_cp]
+                    self.opposed_cp_index = int((i + n_cp / 2)) % n_cp
 
     def start_move(self, start):
         None
@@ -531,9 +538,21 @@ class ControlPoints(scene.visuals.Compound):
         if not self.parent.editable:
             return
         if self.selected_cp is not None:
-            self._width = 2 * (end[0] - self._center[0])
-            self._height = 2 * (end[1] - self._center[1])
-            self.update_points()
+            translate = self.translate_neighbors[self.selected_cp_index]
+
+            set_y = self.control_points[self.opposed_cp_index]._data[0][0][1]
+            self.control_points[translate[0]].set_data(pos=np.array([[end[0], set_y]]))
+            
+            set_x = self.control_points[self.opposed_cp_index]._data[0][0][0]
+            self.control_points[translate[1]].set_data(pos=np.array([[set_x, end[1]]]))
+
+            self.control_points[self.selected_cp_index].set_data(pos=np.array([[end[0], end[1]]]))
+
+            self._width = self.control_points[0]._data[0][0][0] - self.control_points[3]._data[0][0][0]
+            self._height = self.control_points[1]._data[0][0][1] - self.control_points[0]._data[0][0][1]
+            self._center[0] = self.control_points[3]._data[0][0][0] + (self.control_points[0]._data[0][0][0] - self.control_points[3]._data[0][0][0]) / 2
+            self._center[1] = self.control_points[0]._data[0][0][1] + (self.control_points[2]._data[0][0][1] - self.control_points[0]._data[0][0][1]) / 2
+
             self.parent.update_from_controlpoints()
 
     def visible(self, v):
