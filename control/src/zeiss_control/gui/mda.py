@@ -35,6 +35,7 @@ class ZeissMDAWidget(MDAWidget):
         self.saving_file = Path.home() / ".zeiss_control" / "saving.json"
 
         self.settings, self.saving = self.load_settings()
+        print(self.settings.channels)
         self.set_state(self.settings)
 
         self._tab.installEventFilter(self)

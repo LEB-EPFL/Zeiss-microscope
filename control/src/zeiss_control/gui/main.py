@@ -2,6 +2,7 @@ from qtpy.QtWidgets import (QApplication, QPushButton, QWidget, QGridLayout, QLa
 from pymmcore_plus import CMMCorePlus
 from pymmcore_widgets import (GroupPresetTableWidget, StageWidget, LiveButton, SnapButton,
                               ExposureWidget, ChannelGroupWidget, ShuttersWidget)
+from pymmcore_widgets._mda._autofocus_device_widget import _AutofocusZDeviceWidget
 from zeiss_control.gui.mda import ZeissMDAWidget
 from zeiss_control.gui.preview import Preview
 import os
@@ -26,6 +27,8 @@ class MainWindow(QMainWindowRestore):
         self.exposure = ExposureWidget(mmcore=mmcore)
         self.channel_group = ChannelGroupWidget(mmcore=mmcore)
 
+        # self.autofocus = _AutofocusZDeviceWidget(mmcore=mmcore)
+
         self.main.setLayout(QGridLayout())
         self.main.layout().addWidget(self.live_button, 0, 0)
         self.main.layout().addWidget(self.snap_button, 1, 0)
@@ -42,6 +45,7 @@ class MainWindow(QMainWindowRestore):
             self.main.layout().addWidget(self.fluo_label, 3, 1)
             self.main.layout().addWidget(self.shutter_trans, 2, 2)
             self.main.layout().addWidget(self.brightfield_label, 3, 2)
+            # self.main.layout().addWidget(self.autofocus, 4, 0)
 
         self.mda_button.pressed.connect(self._mda)
 

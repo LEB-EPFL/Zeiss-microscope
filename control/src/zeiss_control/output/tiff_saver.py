@@ -93,6 +93,8 @@ class CoreOMETiffWriter:
             self.n_grid_positions = max([seq.sizes.get('g', 1), 1])
             if 'g' in seq.used_axes:
                 self._used_axes = tuple(a for a in self._used_axes if a != 'g')
+            if 'p' in seq.used_axes:
+                self._used_axes = tuple(a for a in self._used_axes if a != 'p')
         if self._mm_config:
             with open(self._folder/'mm_config.txt', 'w') as outfile:
                 yaml.dump(self._mm_config, outfile, default_flow_style=False)
@@ -152,7 +154,7 @@ class CoreOMETiffWriter:
             _mmap = cast("np.memmap", _mmap)
             _mmap = _mmap.reshape(shape)
             self._mmaps.append(_mmap)
-        print("MMEPS", self._mmaps)
+        print("MMEPS", len(self._mmaps))
         print(self.n_grid_positions)
         return self._mmaps
 

@@ -65,7 +65,7 @@ class Preview(QWidgetRestore):
             self.save_loc, _ = QFileDialog.getSaveFileName(directory=self.save_loc)
             print(self.save_loc)
             try:
-                imsave(self.save_loc[0], self.current_frame)
+                imsave(self.save_loc, self.current_frame)
             except Exception as e:
                 import traceback
                 print(traceback.format_exc())

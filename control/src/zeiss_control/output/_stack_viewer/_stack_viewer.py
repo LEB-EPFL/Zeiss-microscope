@@ -198,8 +198,7 @@ class StackViewer(QtWidgets.QWidget):
         self.ready = False
         self.sequence = sequence
         self.pixel_size = self._mmc.getPixelSizeUm() if self._mmc else self.pixel_size
-
-        self.ng = max(sequence.sizes.get("g", 1), 1)
+        self.ng = 1
         self.current_channel = 0
 
         self._collapse_view()
@@ -211,6 +210,7 @@ class StackViewer(QtWidgets.QWidget):
             self._retry_display.emit(event)
             return
         indices = dict(event.index)
+        self.ng = max(self.ng, indices.get("g", 0) + 1)
         img = self.datastore.get_frame(event)
         # Update display
         try:

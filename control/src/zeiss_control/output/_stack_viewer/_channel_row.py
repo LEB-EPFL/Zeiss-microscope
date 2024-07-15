@@ -154,6 +154,7 @@ class ChannelRow(QtWidgets.QWidget):
             "cmap_names", ["gray", "magenta", "cyan"]
         )
         self.channel_cmaps = self.qt_settings.value("channel_cmaps", {})
+        print(self.channel_cmaps)
 
 
 class ChannelBox(QtWidgets.QWidget):

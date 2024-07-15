@@ -75,7 +75,7 @@ class QLocalDataStore(QtCore.QObject):
         # print("ADDING IMAGE TO DATASTORE", img.max())
         try:
             self.array[
-                indices["t"], indices["z"], indices["c"], indices.get("g", 0) :, :
+                indices["t"], indices["z"], indices["c"], indices.get("g", 0), :, :
             ] = img
         except IndexError:
             self.correct_shape(indices)
@@ -85,6 +85,7 @@ class QLocalDataStore(QtCore.QObject):
         self.frame_ready.emit(event)
 
     def get_frame(self, key: tuple) -> np.ndarray:
+        print(key)
         return np.array(self.array[key])
 
     def complement_indices(self, event: MDAEvent | dict) -> dict:
@@ -101,7 +102,7 @@ class QLocalDataStore(QtCore.QObject):
         for i, app in enumerate(diff):
             if app > 0:
                 if i == 0:  # handle time differently, double the size
-                    app = self.array.shape[0]
+                    app = max(self.array.shape[0], 1)
                 append_shape = [*self.array.shape[:i], app, *self.array.shape[i + 1 :]]
                 self.array = np.append(
                     self.array, np.zeros(append_shape, self.array.dtype), axis=i

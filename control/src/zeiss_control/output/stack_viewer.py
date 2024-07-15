@@ -298,6 +298,7 @@ class StackViewer(QWidgetRestore):
             timer.start(100)
             return
         indices = self.complement_indices(event.index)
+        print(indices)
         img = self.datastore.get_frame(
             (indices["t"], indices["z"], indices["c"], indices.get("g", 0))
         )
