@@ -1,0 +1,20 @@
+[project]
+name = "zeiss_control"
+description = "Control for the Zeiss microscope at LEB"
+version = "0.0.1"
+authors = [
+    { name = "Willi Stepp", email = "willi.stepp@epfl.ch" }
+]
+
+dependencies = [
+    'pymmcore-plus',
+    'pymmcore-widgets',
+    'superqt[cmap]',
+    'vispy',
+]
+
+[project.optional-dependencies]
+display = [ 'vispy' ]
+
+[tool.coverage.run]
+source = ['zeiss_control']
