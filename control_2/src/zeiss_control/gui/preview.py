@@ -129,7 +129,7 @@ class Canvas(QWidget):
         self._imcls = scene.visuals.Image
         self.vis_settings: dict = {}
         self.last_channel = self._mmc.getCurrentConfig(self._mmc.getChannelGroup())
-        self.current_channel = self._mmc.getConfigGroupState("Channel")
+        self.current_channel = self._mmc.getConfigGroupState(self._mmc.getChannelGroup())
         self.img = None
 
         self.vis_settings[self.last_channel] = {
@@ -275,6 +275,8 @@ class Canvas(QWidget):
 
     def _on_image_snapped(self, img: np.ndarray | None = None, channel: str|None = None) -> None:
         channel = self._mmc.getCurrentConfig("Channel")
+        if channel not in self.vis_settings.keys():
+            self.vis_settings[channel] = self.vis_settings[self.last_channel]
         if img is None:
             try:
                 img = self._mmc.getLastImage()
