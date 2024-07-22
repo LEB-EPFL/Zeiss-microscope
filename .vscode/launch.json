@@ -8,7 +8,7 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "C:/Control/Zeiss-microscope/control/src/zeiss_control/gui/eda.py",
             "console": "integratedTerminal",
             "justMyCode": false
         }

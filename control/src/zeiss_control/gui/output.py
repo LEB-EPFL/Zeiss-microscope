@@ -3,9 +3,10 @@ from zeiss_control.output.datastore import QLocalDataStore
 from zeiss_control.output.stack_viewer import StackViewer
 from zeiss_control.output._stack_viewer import QOMEZarrDatastore
 from zeiss_control.output._stack_viewer import StackViewer as ZarrStackViewer
+from zeiss_control.output.tiff_saver import CoreOMETiffWriter
+from zeiss_control.backend.meta import MetaDataWriter
 import time
 from useq import MDASequence, Channel, MDAEvent
-from zeiss_control.output.tiff_saver import CoreOMETiffWriter
 # from zeiss_control.output.zarr_saver import CoreOMEZarrWriter
 from qtpy.QtCore import QObject, Signal
 import numpy as np
@@ -55,6 +56,7 @@ class OutputGUI(QObject):
                                               eda_event_bus=self.eda_event_bus)
             if self.save:
                 self.writer = CoreOMETiffWriter(self.path, self.mmc, self.eda_event_bus)
+                self.metadatawriter = MetaDataWriter(self.mmc, self.path)
                 self.writer.sequenceStarted(sequence)
             self.viewer = StackViewer(datastore=self.datastore, mmcore=self.mmc,
                                     sequence=sequence)
