@@ -1,4 +1,7 @@
+# from pymmcore_widgets._stack_viewer_v2._mda_viewer import MDAViewer
 from pymmcore_widgets import MDAWidget
+from pymmcore_plus.mda.handlers import OMEZarrWriter
+
 from pymmcore_plus import CMMCorePlus
 from qtpy.QtCore import Signal, QSize, QPoint, QSettings
 from pathlib import Path
@@ -9,8 +12,6 @@ import pydantic_core
 
 class ZeissMDAWidget(MDAWidget):
     "Adding save information and events to the MDAWidget"
-    new_save_settings = Signal(bool, str)
-    mda_settings_event = Signal(object)
     def __init__(self, mmcore:CMMCorePlus,
                  save_filename: str="settings"):
         
@@ -24,6 +25,50 @@ class ZeissMDAWidget(MDAWidget):
         # Initial window size/pos last saved. Use default values for first time
         self.resize(self.qt_settings.value("size", QSize(270, 225)))
         self.move(self.qt_settings.value("pos", QPoint(50, 50)))
+
+    def run_mda(self):
+        save_path = self.prepare_mda()
+        if save_path is False:
+            return
+        handler = OMEZarrWriter(save_path)
+        sequence = self.value()
+        handler.sequenceStarted(sequence, sequence.metadata)
+        # self.viewer = MDAViewer(handler)
+        # self.viewer.show()
+        self.execute_mda(handler)
+
+#--- TAKE the next to out if they are implemented in the main branch
+
+    def prepare_mda(self) -> bool|str|None:
+        """Prepare the MDA sequence experiment."""
+        # in case the user does not press enter after editing the save name.
+        self.save_info.save_name.editingFinished.emit()
+
+        # if autofocus has been requested, but the autofocus device is not engaged,
+        # and position-specific offsets haven't been set, show a warning
+        pos = self.stage_positions
+        if (
+            self.af_axis.value()
+            and not self._mmc.isContinuousFocusLocked()
+            and (not self.tab_wdg.isChecked(pos) or not pos.af_per_position.isChecked())
+            and not self._confirm_af_intentions()
+        ):
+            return False
+
+        # technically, this is in the metadata as well, but isChecked is more direct
+        if self.save_info.isChecked():
+            return self._update_save_path_from_metadata(
+                self.value(), update_metadata=True
+            )
+        else:
+            return None
+
+    def execute_mda(self, output: Path | str | object | None) -> None:
+        """Execute the MDA experiment corresponding to the current value"""
+        sequence = self.value()
+        # run the MDA experiment asynchronously
+        self._mmc.run_mda(sequence, output=output)
+
 
     def save_settings(self):
         self.settings_file.parent.mkdir(parents=True, exist_ok=True)

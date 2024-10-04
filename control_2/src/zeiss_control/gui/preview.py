@@ -60,13 +60,19 @@ class Preview(QWidgetRestore):
     def connect_events(self):
         self._mmc.events.imageSnapped.connect(self.preview._on_image_snapped)
         self._mmc.events.imageSnapped.connect(self.new_frame)
+        try:
+            self._mmc.mda.events.frameReady.disconnect(self.preview._on_image_snapped)
+        except TypeError:
+            return
 
     def disconnect_events(self):
         self._mmc.events.imageSnapped.disconnect(self.preview._on_image_snapped)
         self._mmc.events.imageSnapped.disconnect(self.new_frame)
+        self._mmc.mda.events.frameReady.connect(self.preview._on_image_snapped)
     
-    def new_frame(self, image):
-        self.current_frame = image
+    def new_frame(self, image=None):
+        if image:
+            self.current_frame = image
 
     def save_image(self):
         if self.current_frame is not None:
@@ -222,7 +228,8 @@ class Canvas(QWidget):
     def update_clims(self, value: tuple[int, int]) -> None:
         self.auto_clim.setChecked(False)
         self.vis_settings[self.last_channel]["clims"] = (value[0], value[1])
-        self.image.clim = (value[0], value[1])
+        if self.image:
+            self.image.clim = (value[0], value[1])
 
     def update_auto(self, state: int) -> None:
         if state == 2:
@@ -273,14 +280,15 @@ class Canvas(QWidget):
             self.clim_slider.setValue(clim)
             self.clim_slider.blockSignals(block)
 
-    def _on_image_snapped(self, img: np.ndarray | None = None, channel: str|None = None) -> None:
+    def _on_image_snapped(self, img: np.ndarray | None = None, channel: str|None = None, meta = None) -> None:
         channel = self._mmc.getCurrentConfig("Channel")
         if channel not in self.vis_settings.keys():
             self.vis_settings[channel] = self.vis_settings[self.last_channel]
         if img is None:
             try:
                 img = self._mmc.getLastImage()
-            except (RuntimeError, IndexError):
+            except (RuntimeError, IndexError) as e:
+                print(e)
                 return
 
         if self.vis_settings[channel]["clim_mode"] == "auto":

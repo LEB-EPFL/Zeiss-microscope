@@ -20,13 +20,15 @@ class MainWindow(QMainWindowRestore):
         self.live_button = LiveButton(mmcore=mmcore)
         self.exposure = ExposureWidget(mmcore=mmcore)
         self.channel_group = ChannelGroupWidget(mmcore=mmcore)
+        self.group_presets = GroupPresetTableWidget(mmcore=mmcore)
 
         self.main.setLayout(QGridLayout())
         self.main.layout().addWidget(self.live_button, 0, 0)
         self.main.layout().addWidget(self.snap_button, 1, 0)
 
-        self.main.layout().addWidget(self.exposure, 0, 2)
-        self.main.layout().addWidget(self.channel_group, 1, 2)
+        self.main.layout().addWidget(self.exposure, 0, 1)
+        self.main.layout().addWidget(self.channel_group, 1, 1)
+        self.main.layout().addWidget(self.group_presets, 2, 0, 1, 2)
 
     def closeEvent(self, event):
         "Close all windows if main window is closed."
